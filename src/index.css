@@ -15,7 +15,7 @@
   --red-bg:   rgba(224, 82, 82, 0.12);
   --blue:     #4a9eff;
   --blue-bg:  rgba(74, 158, 255, 0.08);
-  --mono: ui-monospace, 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  --mono: 'Maple Mono', ui-monospace, monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
