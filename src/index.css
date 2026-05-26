@@ -1,20 +1,24 @@
 :root {
-  --bg:       #0a0e14;
-  --bg2:      #0d1117;
-  --panel:    #0f1520;
-  --border:   #1a2332;
-  --text:     #7a8fa8;
-  --dim:      #3d4f63;
-  --bright:   #c8d8ea;
-  --amber:    #f5a623;
-  --amber-bg: rgba(245, 166, 35, 0.10);
-  --amber-bd: rgba(245, 166, 35, 0.35);
-  --green:    #3ecf8e;
-  --green-bg: rgba(62, 207, 142, 0.08);
-  --red:      #e05252;
-  --red-bg:   rgba(224, 82, 82, 0.12);
-  --blue:     #4a9eff;
-  --blue-bg:  rgba(74, 158, 255, 0.08);
+  --bg:        #0a0e14;
+  --bg2:       #0d1117;
+  --panel:     #0f1520;
+  --border:    #1a2332;
+  --text:      #7a8fa8;
+  --dim:       #3d4f63;
+  --bright:    #c8d8ea;
+  --amber:     #f5a623;
+  --amber-bg:  rgba(245, 166, 35, 0.10);
+  --amber-bd:  rgba(245, 166, 35, 0.35);
+  --green:     #3ecf8e;
+  --green-bg:  rgba(62, 207, 142, 0.08);
+  --red:       #e05252;
+  --red-bg:    rgba(224, 82, 82, 0.12);
+  --blue:      #4a9eff;
+  --blue-bg:   rgba(74, 158, 255, 0.08);
+  --stage2:    #33aaff;
+  --stage2-bg: rgba(51, 170, 255, 0.08);
+  --stage2-bd: rgba(51, 170, 255, 0.35);
+  --purple:    #aa88ff;
   --mono: 'Maple Mono', ui-monospace, monospace;
 }
 
@@ -250,6 +254,7 @@ button { font-family: var(--mono); cursor: pointer; }
 }
 .tline.amber { color: var(--amber); }
 .tline.green { color: var(--green); }
+.tline.blue  { color: var(--stage2); }
 
 /* Card grid */
 .panel-center {
@@ -340,3 +345,160 @@ button { font-family: var(--mono); cursor: pointer; }
   padding: 16px;
   text-align: center;
 }
+
+/* ── Stage progress pills ───────────────────────────────────── */
+.stage-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stage-sep { color: var(--dim); font-size: 10px; }
+.stage-pill {
+  padding: 2px 8px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  border: 1px solid transparent;
+}
+.pill-active-amber { background: var(--amber-bg); border-color: var(--amber);    color: var(--amber); }
+.pill-done-amber   { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); opacity: 0.65; }
+.pill-active-blue  { background: var(--stage2-bg); border-color: var(--stage2);  color: var(--stage2); }
+.pill-dim          { border-color: var(--border); color: var(--dim); }
+
+/* ── Stage 2 layout ─────────────────────────────────────────── */
+.s2-columns {
+  display: grid;
+  grid-template-columns: 1fr 290px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.s2-evidence-panel {
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.s2-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.s2-entry {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.s2-entry:hover { background: var(--bg2); }
+.s2-entry.pinned {
+  background: var(--stage2-bg);
+  border-left: 2px solid var(--stage2);
+  padding-left: 12px;
+}
+
+.s2-entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.s2-entry-ts   { font-size: 10px; color: var(--stage2); letter-spacing: 1px; }
+.s2-entry-desc { font-size: 12px; color: var(--bright); margin-bottom: 3px; }
+.s2-entry-meta { font-size: 10px; color: var(--dim); }
+
+.s2-pin-btn {
+  padding: 1px 7px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  flex-shrink: 0;
+  transition: border-color 0.1s, color 0.1s;
+}
+.s2-pin-btn:hover  { border-color: var(--stage2); color: var(--stage2); }
+.s2-pin-btn.active { border-color: var(--stage2-bd); color: var(--stage2); background: var(--stage2-bg); }
+
+/* ── Stage 2 right panel ─────────────────────────────────────── */
+.s2-right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.s2-board {
+  padding: 8px 12px;
+  overflow-y: auto;
+  max-height: 180px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.s2-board-empty {
+  font-size: 11px;
+  color: var(--dim);
+  padding: 4px 0;
+}
+.s2-pinned-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.s2-pinned-entry:last-child { border-bottom: none; }
+.s2-pinned-desc { flex: 1; color: var(--text); font-size: 11px; line-height: 1.4; }
+.s2-unpin-x {
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+.s2-unpin-x:hover { color: var(--red); }
+
+.s2-terminal {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Stage 2 submit area ─────────────────────────────────────── */
+.s2-submit-area {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.s2-feedback {
+  font-size: 11px;
+  color: var(--red);
+  background: var(--red-bg);
+  border: 1px solid rgba(224, 82, 82, 0.2);
+  padding: 6px 10px;
+}
+.s2-submit-hint {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 4px 0;
+}
+.btn-submit {
+  width: 100%;
+  padding: 10px;
+  background: var(--stage2-bg);
+  border: 1px solid var(--stage2-bd);
+  color: var(--stage2);
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-family: var(--mono);
+  transition: background 0.15s;
+}
+.btn-submit:hover { background: rgba(51, 170, 255, 0.18); }

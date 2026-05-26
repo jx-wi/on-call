@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { EVIDENCE, CORRECT_EVIDENCE_IDS } from './data/evidence'
 
 // ── Scenario ──────────────────────────────────────────────────
 type Target = { id: string; service: string; version: string; tag: string }
@@ -47,9 +48,36 @@ const BOB_LINES = [
   'your-clearance: SRE-L2',
 ]
 
+const BOB_LINES_S2 = [
+  '$ correlate --window 02:55-03:14',
+  '',
+  'scanning git log...',
+  'scanning fw rules...',
+  'scanning auth config...',
+  '',
+  '─────────────────────────',
+  '',
+  'anomaly clusters:',
+  '  window: 03:05–03:14 UTC',
+  '  actors: multiple',
+  '  surfaces: auth, net,',
+  '             data-store',
+  '',
+  '─────────────────────────',
+  '',
+  'pivot on actor + service',
+  '+ timestamp clusters.',
+  '',
+  'not all noise is random.',
+  'look for a sequence.',
+  '',
+  '$ [cursor]',
+]
+
 // ── Types ─────────────────────────────────────────────────────
-type Screen = 'start' | 'menu' | 'playing' | 'win' | 'gameover'
+type Screen = 'start' | 'menu' | 'playing' | 'stage2' | 'win' | 'gameover'
 const TIMER_START = 300
+const STAGE2_TIMER_START = 600
 
 // ── Helpers ───────────────────────────────────────────────────
 function fmt(s: number) {
@@ -62,18 +90,37 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState(TIMER_START)
   const [penalty, setPenalty] = useState<string | null>(null)
+  const [stage2TimeLeft, setStage2TimeLeft] = useState(STAGE2_TIMER_START)
+  const [pinnedIds, setPinnedIds] = useState<string[]>([])
+  const [stage2Feedback, setStage2Feedback] = useState<string | null>(null)
+  const [gameoverMsg, setGameoverMsg] = useState('time expired')
 
-  // Countdown — runs only while playing
+  // Stage 1 countdown
   useEffect(() => {
     if (screen !== 'playing') return
     const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000)
     return () => clearInterval(id)
   }, [screen])
 
-  // Time-out → game over
+  // Stage 1 timeout → game over
   useEffect(() => {
     if (screen === 'playing' && timeLeft === 0) setScreen('gameover')
   }, [timeLeft, screen])
+
+  // Stage 2 countdown
+  useEffect(() => {
+    if (screen !== 'stage2') return
+    const id = setInterval(() => setStage2TimeLeft(t => Math.max(0, t - 1)), 1000)
+    return () => clearInterval(id)
+  }, [screen])
+
+  // Stage 2 timeout → game over
+  useEffect(() => {
+    if (screen === 'stage2' && stage2TimeLeft === 0) {
+      setGameoverMsg('investigation window expired — breach vector unconfirmed')
+      setScreen('gameover')
+    }
+  }, [stage2TimeLeft, screen])
 
   // Any key / click on start screen → menu
   useEffect(() => {
@@ -98,6 +145,10 @@ export default function App() {
     setSelected(null)
     setTimeLeft(TIMER_START)
     setPenalty(null)
+    setStage2TimeLeft(STAGE2_TIMER_START)
+    setPinnedIds([])
+    setStage2Feedback(null)
+    setGameoverMsg('time expired')
     setScreen('start')
   }
 
@@ -105,8 +156,9 @@ export default function App() {
     if (!selected) return
     const target = SCENARIO.targets.find(t => t.id === selected)!
     if (selected === SCENARIO.correctTargetId) {
-      setScreen('win')
+      setScreen('stage2')
     } else if (Math.random() < 0.3) {
+      setGameoverMsg('rollback cascaded — all services offline')
       setScreen('gameover')
     } else {
       setPenalty(`−45s  wrong target: ${target.service} ${target.version}`)
@@ -115,8 +167,24 @@ export default function App() {
     }
   }
 
+  function togglePin(id: string) {
+    setPinnedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    setStage2Feedback(null)
+  }
+
+  function evaluateEvidence() {
+    const allFound = CORRECT_EVIDENCE_IDS.every(id => pinnedIds.includes(id))
+    if (allFound) {
+      setScreen('win')
+    } else {
+      const found = CORRECT_EVIDENCE_IDS.filter(id => pinnedIds.includes(id)).length
+      setStage2Feedback(`${found}/3 breach indicators confirmed — keep looking`)
+    }
+  }
+
   const selectedTarget = SCENARIO.targets.find(t => t.id === selected)
   const timerClass = timeLeft < 60 ? 'critical' : timeLeft < 120 ? 'warn' : ''
+  const stage2TimerClass = stage2TimeLeft < 60 ? 'critical' : stage2TimeLeft < 120 ? 'warn' : ''
 
   // ── Screens ───────────────────────────────────────────────
   if (screen === 'start') {
@@ -154,9 +222,9 @@ export default function App() {
     return (
       <div className="splash">
         <div className="splash-inner">
-          <p className="end-label green">ROLLBACK SUCCESSFUL</p>
+          <p className="end-label green">BREACH CONTAINED</p>
           <h1 className="splash-title green">SYSTEMS RESTORED</h1>
-          <p className="splash-sub">time remaining: {fmt(timeLeft)}</p>
+          <p className="splash-sub">investigation complete — all 3 indicators confirmed</p>
           <button className="btn-primary" onClick={restart}>RESTART</button>
         </div>
       </div>
@@ -169,10 +237,105 @@ export default function App() {
         <div className="splash-inner">
           <p className="end-label red">CRITICAL FAILURE</p>
           <h1 className="splash-title red">GAME OVER</h1>
-          <p className="splash-sub">
-            {timeLeft === 0 ? 'time expired' : 'rollback cascaded — all services offline'}
-          </p>
+          <p className="splash-sub">{gameoverMsg}</p>
           <button className="btn-primary" onClick={restart}>RESTART</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Stage 2 — Investigation ───────────────────────────────
+  if (screen === 'stage2') {
+    return (
+      <div className="game">
+        <header className="topbar">
+          <div className="topbar-left">
+            <span className="badge-incident">INCIDENT-2247</span>
+            <span className="incident-summary">breach investigation — identify the 3 indicators</span>
+          </div>
+          <div className="stage-pills">
+            <span className="stage-pill pill-done-amber">STAGE 1</span>
+            <span className="stage-sep">·</span>
+            <span className="stage-pill pill-active-blue">STAGE 2</span>
+            <span className="stage-sep">·</span>
+            <span className="stage-pill pill-dim">STAGE 3</span>
+          </div>
+          <span className={`timer ${stage2TimerClass}`}>{fmt(stage2TimeLeft)}</span>
+        </header>
+
+        <div className="s2-columns">
+          <section className="panel s2-evidence-panel">
+            <div className="panel-label">
+              RECENT CHANGES — {EVIDENCE.length} entries · pin breach indicators
+            </div>
+            <div className="s2-list">
+              {EVIDENCE.map(e => (
+                <div
+                  key={e.id}
+                  className={'s2-entry' + (pinnedIds.includes(e.id) ? ' pinned' : '')}
+                >
+                  <div className="s2-entry-header">
+                    <span className="s2-entry-ts">{e.ts}</span>
+                    <button
+                      className={'s2-pin-btn' + (pinnedIds.includes(e.id) ? ' active' : '')}
+                      onClick={() => togglePin(e.id)}
+                    >
+                      {pinnedIds.includes(e.id) ? 'UNPIN' : 'PIN'}
+                    </button>
+                  </div>
+                  <div className="s2-entry-desc">{e.description}</div>
+                  <div className="s2-entry-meta">{e.author} · {e.service}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <aside className="panel s2-right-panel">
+            <div className="panel-label">EVIDENCE BOARD — {pinnedIds.length} pinned</div>
+            <div className="s2-board">
+              {pinnedIds.length === 0 ? (
+                <div className="s2-board-empty">no items pinned</div>
+              ) : (
+                pinnedIds.map(id => {
+                  const e = EVIDENCE.find(x => x.id === id)!
+                  return (
+                    <div key={id} className="s2-pinned-entry">
+                      <span className="s2-entry-ts">{e.ts}</span>
+                      <span className="s2-pinned-desc">{e.description}</span>
+                      <button className="s2-unpin-x" onClick={() => togglePin(id)}>×</button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="panel-label">BOB — sysctl</div>
+            <div className="terminal s2-terminal">
+              {BOB_LINES_S2.map((line, i) => (
+                <div
+                  key={i}
+                  className={'tline' + (line.includes('[cursor]') ? ' blue' : '')}
+                >
+                  {line || ' '}
+                </div>
+              ))}
+            </div>
+
+            <div className="s2-submit-area">
+              {stage2Feedback && (
+                <div className="s2-feedback">{stage2Feedback}</div>
+              )}
+              {pinnedIds.length >= 3 ? (
+                <button className="btn-submit" onClick={evaluateEvidence}>
+                  SUBMIT EVIDENCE
+                </button>
+              ) : (
+                <div className="s2-submit-hint">
+                  pin {3 - pinnedIds.length} more to submit
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       </div>
     )
@@ -185,6 +348,13 @@ export default function App() {
         <div className="topbar-left">
           <span className="badge-incident">INCIDENT-2247</span>
           <span className="incident-summary">{SCENARIO.summary}</span>
+        </div>
+        <div className="stage-pills">
+          <span className="stage-pill pill-active-amber">STAGE 1</span>
+          <span className="stage-sep">·</span>
+          <span className="stage-pill pill-dim">STAGE 2</span>
+          <span className="stage-sep">·</span>
+          <span className="stage-pill pill-dim">STAGE 3</span>
         </div>
         <span className={`timer ${timerClass}`}>{fmt(timeLeft)}</span>
       </header>
@@ -203,7 +373,7 @@ export default function App() {
                   (line.includes('healthy') || line.includes('writing') ? ' green' : '')
                 }
               >
-                {line || ' '}
+                {line || ' '}
               </div>
             ))}
           </div>
